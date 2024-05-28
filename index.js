@@ -18,6 +18,7 @@ app.use(cors());
 app.get("/", (req, res) => {
   res.send("BiteWise Backend");
 });
+app.use("/api/dss", require("./src/routes/dss"));
 
 // APP START
 app.listen(5000, () => {
