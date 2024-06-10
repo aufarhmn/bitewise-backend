@@ -130,12 +130,12 @@ exports.topsisMethod = async (req, res) => {
   const relativeCloseness = separationMeasures.map(
     ({ choice, positiveSeparation, negativeSeparation }) => ({
       choice,
-      closeness: negativeSeparation / (positiveSeparation + negativeSeparation)
+      totalScore: negativeSeparation / (positiveSeparation + negativeSeparation)
     })
   );
 
   const rankedChoices = relativeCloseness.sort(
-    (a, b) => b.closeness - a.closeness
+    (a, b) => b.totalScore - a.totalScore
   );
 
   return res.status(200).json({ rankedChoices });
