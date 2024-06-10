@@ -134,11 +134,11 @@ exports.topsisMethod = async (req, res) => {
     })
   );
 
-  const rankedChoices = relativeCloseness.sort(
+  const scores = relativeCloseness.sort(
     (a, b) => b.totalScore - a.totalScore
   );
 
-  return res.status(200).json({ rankedChoices });
+  return res.status(200).json({ scores });
 };
 
 exports.AHPMethod = async (req, res) => {
