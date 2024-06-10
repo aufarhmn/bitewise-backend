@@ -1,3 +1,5 @@
+const math = require("mathjs");
+
 exports.scoringMethod = async (req, res) => {
   const { criteria, weights, choices, values, negativityBias } = req.body;
 
@@ -10,11 +12,9 @@ exports.scoringMethod = async (req, res) => {
     criteria.length !== negativityBias.length ||
     choices.some((choice) => values[choice].length !== criteria.length)
   ) {
-    return res
-      .status(400)
-      .json({
-        error: "Criteria, weights, negativityBias, and values length mismatch"
-      });
+    return res.status(400).json({
+      error: "Criteria, weights, negativityBias, and values length mismatch"
+    });
   }
 
   const scores = choices.map((choice) => {
@@ -45,11 +45,9 @@ exports.topsisMethod = async (req, res) => {
     criteria.length !== negativityBias.length ||
     choices.some((choice) => values[choice].length !== criteria.length)
   ) {
-    return res
-      .status(400)
-      .json({
-        error: "Criteria, weights, negativityBias, and values length mismatch"
-      });
+    return res.status(400).json({
+      error: "Criteria, weights, negativityBias, and values length mismatch"
+    });
   }
 
   const numCriteria = criteria.length;
@@ -89,13 +87,16 @@ exports.topsisMethod = async (req, res) => {
   const separationMeasures = choices.map((choice) => {
     const positiveSeparation = Math.sqrt(
       criteria.reduce(
-        (sum, _, j) => sum + Math.pow(weightedValues[choice][j] - idealSolution[j], 2),
+        (sum, _, j) =>
+          sum + Math.pow(weightedValues[choice][j] - idealSolution[j], 2),
         0
       )
     );
     const negativeSeparation = Math.sqrt(
       criteria.reduce(
-        (sum, _, j) => sum + Math.pow(weightedValues[choice][j] - negativeIdealSolution[j], 2),
+        (sum, _, j) =>
+          sum +
+          Math.pow(weightedValues[choice][j] - negativeIdealSolution[j], 2),
         0
       )
     );
@@ -109,7 +110,49 @@ exports.topsisMethod = async (req, res) => {
     })
   );
 
-  const rankedChoices = relativeCloseness.sort((a, b) => b.closeness - a.closeness);
+  const rankedChoices = relativeCloseness.sort(
+    (a, b) => b.closeness - a.closeness
+  );
 
   return res.status(200).json({ rankedChoices });
+};
+
+exports.AHPMethod = async (req, res) => {
+  const { criteria, comparisons, alternatives, alternativeScores } = req.body;
+
+  if (!criteria || !comparisons || !alternatives || !alternativeScores) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  if (criteria.length !== comparisons.length) {
+    return res.status(400).json({ error: "Criteria and comparisons length mismatch" });
+  }
+
+  const criteriaWeights = comparisons.map((comparisonMatrix) => {
+    const matrix = math.matrix(comparisonMatrix.map(row => row.map(value => math.evaluate(value))));
+
+    const rowGeometricMeans = matrix.toArray().map(row => {
+      const product = row.reduce((acc, val) => acc * val, 1);
+      return math.pow(product, 1 / row.length);
+    });
+
+    const sumGeometricMeans = math.sum(rowGeometricMeans);
+    return rowGeometricMeans.map(value => value / sumGeometricMeans);
+  });
+
+  const flattenedWeights = criteriaWeights.flat();
+  const totalWeight = math.sum(flattenedWeights);
+  const normalizedCriteriaWeights = flattenedWeights.map(weight => weight / totalWeight);
+
+  const scores = alternatives.map(alternative => {
+    const alternativeValues = alternativeScores[alternative];
+    const totalScore = criteria.reduce((sum, criterion, index) => {
+      return sum + alternativeValues[index] * normalizedCriteriaWeights[index];
+    }, 0);
+    return { alternative, totalScore };
+  });
+
+  const rankedAlternatives = scores.sort((a, b) => b.totalScore - a.totalScore);
+
+  return res.status(200).json({ rankedAlternatives });
 };
