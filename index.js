@@ -21,6 +21,6 @@ app.get("/", (req, res) => {
 app.use("/api/dss", require("./src/routes/dss"));
 
 // APP START
-app.listen(5000, () => {
-  console.log("Server is running on http://localhost:5000");
+app.listen(5100, () => {
+  console.log("Server is running on http://localhost:5100");
 });
