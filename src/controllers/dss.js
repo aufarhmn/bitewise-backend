@@ -17,15 +17,39 @@ exports.scoringMethod = async (req, res) => {
     });
   }
 
-  const scores = choices.map((choice) => {
-    const totalScore = criteria.reduce((score, criterion, index) => {
-      const value = values[choice][index];
-      const weight = weights[index];
+  const normalizedValues = {};
+
+  criteria.forEach((criterion, index) => {
+    const criterionValues = choices.map((choice) => values[choice][index]);
+
+    const highestValue = Math.max(...criterionValues);
+    const lowestValue = Math.min(...criterionValues);
+
+    choices.forEach((choice) => {
+      const currentValue = values[choice][index];
       const isNegative = negativityBias[index];
 
-      const adjustedValue = isNegative ? -value : value;
+      let normalizedValue;
+      if (isNegative) {
+        normalizedValue = lowestValue / currentValue;
+      } else {
+        normalizedValue = currentValue / highestValue;
+      }
 
-      return score + adjustedValue * weight;
+      if (!normalizedValues[choice]) {
+        normalizedValues[choice] = [];
+      }
+
+      normalizedValues[choice][index] = normalizedValue;
+    });
+  });
+
+  const scores = choices.map((choice) => {
+    const totalScore = criteria.reduce((score, criterion, index) => {
+      const normalizedValue = normalizedValues[choice][index];
+      const weight = weights[index];
+
+      return score + normalizedValue * weight;
     }, 0);
     return { choice, totalScore };
   });
